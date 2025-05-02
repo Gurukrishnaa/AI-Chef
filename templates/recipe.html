@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title mb-4">{{ recipe.name }}</h2>
+                
+                <!-- Recipe Info -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Recipe Details</h5>
+                                <p><strong>Prep Time:</strong> {{ recipe.prep_time }}</p>
+                                <p><strong>Cook Time:</strong> {{ recipe.cook_time }}</p>
+                                <p><strong>Difficulty:</strong> {{ recipe.difficulty }}</p>
+                                <p><strong>Servings:</strong> {{ recipe.servings }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Ingredients</h5>
+                                <div id="ingredientsList">
+                                    {% for ingredient in recipe.ingredients %}
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="ingredient{{ loop.index }}">
+                                        <label class="form-check-label" for="ingredient{{ loop.index }}">
+                                            {{ ingredient }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cooking Steps -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Cooking Instructions</h5>
+                        <div id="stepsContainer">
+                            {% for step in recipe.steps %}
+                            <div class="step-item mb-3">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-primary me-2">{{ loop.index }}</span>
+                                    <p class="mb-0">{{ step.instruction }}</p>
+                                </div>
+                                {% if step.timer %}
+                                <div class="timer-container mt-2">
+                                    <div class="timer" data-duration="{{ step.timer }}">00:00</div>
+                                    <button class="btn btn-sm btn-outline-primary start-timer">Start Timer</button>
+                                    <button class="btn btn-sm btn-outline-secondary pause-timer" style="display: none;">Pause</button>
+                                    <button class="btn btn-sm btn-outline-danger reset-timer" style="display: none;">Reset</button>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nutrition Info -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Nutrition Information</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <p><strong>Calories:</strong> {{ recipe.nutrition.calories }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Protein:</strong> {{ recipe.nutrition.protein }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Carbs:</strong> {{ recipe.nutrition.carbs }}</p>
+                            </div>
+                            <div class="col-md-3">
+                                <p><strong>Fat:</strong> {{ recipe.nutrition.fat }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Features -->
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Need Help?</h5>
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="cookingQuestion" placeholder="Ask a question about this recipe...">
+                            <button class="btn btn-primary" id="askQuestion">Ask</button>
+                        </div>
+                        <div id="answerContainer" style="display: none;">
+                            <div class="alert alert-info" role="alert"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Timer functionality
+    const timers = document.querySelectorAll('.timer-container');
+    timers.forEach(container => {
+        const timer = container.querySelector('.timer');
+        const startBtn = container.querySelector('.start-timer');
+        const pauseBtn = container.querySelector('.pause-timer');
+        const resetBtn = container.querySelector('.reset-timer');
+        let timeLeft = parseInt(timer.dataset.duration);
+        let timerInterval;
+
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timer.textContent = "Time's up!";
+                startBtn.style.display = 'none';
+                pauseBtn.style.display = 'none';
+                resetBtn.style.display = 'inline-block';
+            }
+        }
+
+        startBtn.addEventListener('click', () => {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimer();
+            }, 1000);
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+            resetBtn.style.display = 'none';
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            startBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            resetBtn.style.display = 'inline-block';
+        });
+
+        resetBtn.addEventListener('click', () => {
+            clearInterval(timerInterval);
+            timeLeft = parseInt(timer.dataset.duration);
+            updateTimer();
+            startBtn.style.display = 'inline-block';
+            pauseBtn.style.display = 'none';
+            resetBtn.style.display = 'none';
+        });
+    });
+
+    // Question answering functionality
+    const askQuestionBtn = document.getElementById('askQuestion');
+    const cookingQuestion = document.getElementById('cookingQuestion');
+    const answerContainer = document.getElementById('answerContainer');
+
+    askQuestionBtn.addEventListener('click', async () => {
+        const question = cookingQuestion.value.trim();
+        if (!question) return;
+
+        try {
+            const response = await fetch('/ask_question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    question: question,
+                    recipe_id: '{{ recipe.id }}'
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                answerContainer.style.display = 'block';
+                answerContainer.querySelector('.alert').textContent = data.answer;
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while processing your question');
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="48" height="48" rx="12" fill="#FF5722"/>
+    <!-- Fork -->
+    <path d="M16 12L16 16M20 12L20 16M24 12L24 16M20 16L20 36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <!-- Spoon -->
+    <circle cx="32" cy="14" r="4" fill="white"/>
+    <path d="M32 18L32 36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg> 

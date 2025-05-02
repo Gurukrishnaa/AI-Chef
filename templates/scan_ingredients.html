@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4 text-center">Scan Ingredients</h2>
+        <div class="card">
+            <div class="card-body">
+                <div class="text-center mb-4">
+                        <div id="camera-container" class="camera-container">
+                            <video id="webcam" autoplay playsinline></video>
+                        </div>
+                        <div id="captured-image" class="captured-image" style="display: none;">
+                            <canvas id="canvas" style="display: none;"></canvas>
+                            <img id="output" alt="Captured image">
+                    </div>
+                    <div class="btn-group mb-3 mt-3">
+                        <button id="startCamera" class="btn btn-primary">Start Camera</button>
+                        <button id="captureImage" class="btn btn-success" disabled>Capture</button>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                        <button id="uploadImage" class="btn btn-secondary">Upload Image</button>
+                    </div>
+                </div>
+
+                    <div id="results" class="mt-4" style="display: none;">
+                        <h4 class="mb-3">Detected Ingredients</h4>
+                        <div id="resultContent" class="border p-3 rounded"></div>
+                        <div class="text-center mt-3">
+                            <button id="nextButton" class="btn btn-primary">Next</button>
+                        </div>
+                </div>
+
+                    <div id="preferences" class="mt-4" style="display: none;">
+                        <h4 class="mb-3">Your Preferences</h4>
+                        <div class="form-group">
+                            <textarea id="preferencesText" class="form-control" rows="3" 
+                                    placeholder="Enter your preferences (e.g., 'I want something spicy' or 'Quick dinner')"></textarea>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button id="suggestRecipes" class="btn btn-success">Suggest Recipes</button>
+                        </div>
+                </div>
+
+                    <div id="recipeResults" class="mt-4" style="display: none;">
+                        <h4 class="mb-3">Suggested Recipes</h4>
+                        <div id="recipeContent" class="border p-3 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.camera-container {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.camera-container video {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.captured-image {
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.captured-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.ingredients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.ingredient-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.8rem 1rem;
+    background: var(--light-orange);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.ingredient-item:hover {
+    background: var(--primary-orange);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.ingredient-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--primary-orange);
+    border-radius: 4px;
+    cursor: pointer;
+    accent-color: var(--primary-orange);
+}
+
+.ingredient-label {
+    font-size: 1.1rem;
+    color: var(--text-dark);
+    margin: 0;
+    cursor: pointer;
+}
+
+.ingredient-item:hover .ingredient-label {
+    color: white;
+}
+
+.btn-primary, .btn-success {
+    min-width: 120px;
+}
+
+#preferences {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+#preferencesText {
+    border: 1px solid var(--light-orange);
+    padding: 1rem;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+}
+
+#preferencesText:focus {
+    border-color: var(--primary-orange);
+    box-shadow: 0 0 0 0.2rem rgba(255, 87, 34, 0.25);
+}
+</style>
+{% endblock %}

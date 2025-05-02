@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-orange">
+                <h2 class="text-white mb-0">Suggest a Dish</h2>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>Enter Your Preferences</h5>
+                    <textarea class="form-control mb-3" id="dishPreferences" rows="3" 
+                              placeholder="E.g., 'Mexican, garlic tinge' or 'Something creamy and mild'"></textarea>
+                    <button id="getSuggestions" class="btn btn-success">Get Suggestions</button>
+                </div>
+
+                <div id="suggestionResults" style="display: none;">
+                    <h4>Suggested Dishes</h4>
+                    <div id="suggestionContent" class="recipe-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.bg-orange {
+    background: linear-gradient(135deg, var(--primary-orange), var(--dark-orange));
+}
+
+.recipe-grid {
+    display: grid;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.recipe-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 87, 34, 0.1);
+}
+
+.recipe-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(255, 87, 34, 0.15);
+    border-color: var(--primary-orange);
+}
+
+.recipe-card-header {
+    background: linear-gradient(135deg, var(--primary-orange), var(--dark-orange));
+    color: white;
+    padding: 1.5rem;
+    border-radius: 12px 12px 0 0;
+}
+
+.recipe-card-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.recipe-card-content {
+    padding: 1.5rem;
+}
+
+.recipe-description {
+    color: var(--text-light);
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+}
+
+.recipe-section {
+    margin-bottom: 1.5rem;
+}
+
+.recipe-section:last-child {
+    margin-bottom: 0;
+}
+
+.recipe-section-title {
+    font-weight: 600;
+    color: var(--primary-orange);
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+}
+
+.recipe-meta {
+    display: flex;
+    gap: 2rem;
+    background: var(--light-orange);
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+}
+
+.recipe-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.recipe-meta-label {
+    font-weight: 600;
+    color: var(--primary-orange);
+}
+
+.recipe-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin: 1rem 0;
+}
+
+.recipe-ingredient-tag {
+    background: var(--light-orange);
+    color: var(--text-dark);
+    padding: 0.6rem 1.2rem;
+    border-radius: 30px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.recipe-ingredient-tag:hover {
+    background: var(--primary-orange);
+    color: white;
+    transform: translateY(-2px);
+}
+
+textarea {
+    border: 1px solid var(--light-orange);
+    padding: 1rem;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+}
+
+textarea:focus {
+    border-color: var(--primary-orange);
+    box-shadow: 0 0 0 0.2rem rgba(255, 87, 34, 0.25);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const getSuggestionsBtn = document.getElementById('getSuggestions');
+    const dishPreferences = document.getElementById('dishPreferences');
+    const suggestionResults = document.getElementById('suggestionResults');
+    const suggestionContent = document.getElementById('suggestionContent');
+
+    getSuggestionsBtn.addEventListener('click', async () => {
+        const preferences = dishPreferences.value.trim();
+        if (!preferences) {
+            alert('Please enter your preferences');
+            return;
+        }
+
+        try {
+            const response = await fetch('/get_recipe_suggestions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    preferences: preferences
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                // Split the recipes and format them
+                const recipes = data.result
+                    .split(/\d+\.\s+\*\*/)
+                    .slice(1)
+                    .map(recipe => recipe.trim());
+
+                const formattedRecipes = recipes.map(recipe => {
+                    // Store recipe data
+                    const recipeId = 'recipe_' + Math.random().toString(36).substr(2, 9);
+                    const recipeData = parseRecipe(recipe);
+                    sessionStorage.setItem(recipeId, JSON.stringify(recipeData));
+                    
+                    // Format recipe HTML
+                    return `
+                        <div class="recipe-card" data-recipe-id="${recipeId}">
+                            <div class="recipe-card-header">
+                                <h3>${recipeData.name}</h3>
+                            </div>
+                            <div class="recipe-card-content">
+                                ${recipeData.description ? `
+                                    <div class="recipe-section">
+                                        <div class="recipe-description">${recipeData.description}</div>
+                                    </div>
+                                ` : ''}
+
+                                ${recipeData.ingredients.length > 0 ? `
+                                    <div class="recipe-section">
+                                        <div class="recipe-section-title">Ingredients</div>
+                                        <div class="recipe-ingredients">
+                                            ${recipeData.ingredients.map(ing => `<span class="recipe-ingredient-tag">${ing}</span>`).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+
+                                <div class="recipe-section">
+                                    <div class="recipe-meta">
+                                        ${recipeData.difficulty ? `
+                                            <div class="recipe-meta-item">
+                                                <span class="recipe-meta-label">Difficulty:</span>
+                                                <span>${recipeData.difficulty}</span>
+                                            </div>
+                                        ` : ''}
+                                        ${recipeData.cookingTime ? `
+                                            <div class="recipe-meta-item">
+                                                <span class="recipe-meta-label">Time:</span>
+                                                <span>${recipeData.cookingTime}</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Display the formatted recipes
+                suggestionResults.style.display = 'block';
+                suggestionContent.innerHTML = formattedRecipes;
+
+                // Add click handlers to recipe cards
+                document.querySelectorAll('.recipe-card').forEach(card => {
+                    card.addEventListener('click', function() {
+                        const recipeId = this.dataset.recipeId;
+                        const recipeData = JSON.parse(sessionStorage.getItem(recipeId));
+                        if (recipeData) {
+                            // Store the recipe data again to ensure it's fresh
+                            sessionStorage.setItem(recipeId, JSON.stringify(recipeData));
+                            // Redirect to ingredients page
+                            window.location.href = `/recipe/ingredients/${recipeId}`;
+                        }
+                    });
+                });
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while processing your request');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-orange">
+                    <h3 class="text-white mb-0" id="recipeName"></h3>
+                </div>
+                <div class="card-body">
+                    <div class="recipe-description mb-4" id="recipeDescription"></div>
+                    
+                    <div id="selectedIngredientsSection" class="mb-4">
+                        <h4>Selected Ingredients</h4>
+                        <div class="selected-ingredients-list">
+                            <!-- Selected ingredients will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div id="ingredientsSection">
+                        <h4>Additional Required Ingredients</h4>
+                        <div class="ingredients-checklist mb-4">
+                            <!-- Additional ingredients will be populated here -->
+                        </div>
+                        <button id="nextButton" class="btn btn-success">Next</button>
+                    </div>
+
+                    <div id="alternativesSection" style="display: none;">
+                        <h4>Missing Ingredients</h4>
+                        <div id="missingIngredients" class="ingredients-grid mb-4">
+                            <!-- Missing ingredients will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div id="alternativesCard" class="card" style="display: none;">
+                <div class="card-header bg-orange">
+                    <h4 class="text-white mb-0">Ingredient Alternatives</h4>
+                </div>
+                <div class="card-body">
+                    <div id="alternativeIngredients">
+                        <!-- Alternatives will be populated here -->
+                    </div>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <button id="proceedButton" class="btn btn-success btn-lg w-100" style="display: none;" disabled>
+                    Proceed to Cooking Instructions
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const recipeId = window.location.pathname.split('/').pop();
+    const recipeData = JSON.parse(sessionStorage.getItem(recipeId));
+    const selectedIngredientsFromScan = JSON.parse(sessionStorage.getItem('selectedIngredients') || '[]');
+    
+    if (!recipeData) {
+        console.error('Recipe data not found');
+        return;
+    }
+
+    // Set recipe details
+    document.getElementById('recipeName').textContent = recipeData.name;
+    document.getElementById('recipeDescription').textContent = recipeData.description;
+
+    // Display selected ingredients from scan
+    const selectedIngredientsContainer = document.querySelector('.selected-ingredients-list');
+    selectedIngredientsFromScan.forEach(ingredient => {
+        const div = document.createElement('div');
+        div.className = 'selected-ingredient-item';
+        div.innerHTML = `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" checked disabled>
+                <label class="form-check-label">${ingredient}</label>
+            </div>
+        `;
+        selectedIngredientsContainer.appendChild(div);
+    });
+
+    // Display additional required ingredients
+    const ingredientsContainer = document.querySelector('.ingredients-checklist');
+    const additionalIngredients = recipeData.ingredients.filter(ing => !selectedIngredientsFromScan.includes(ing));
+    
+    additionalIngredients.forEach(ingredient => {
+        const div = document.createElement('div');
+        div.className = 'ingredient-checkbox-item';
+        div.innerHTML = `
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" data-ingredient="${ingredient}">
+                <label class="form-check-label">${ingredient}</label>
+            </div>
+        `;
+        ingredientsContainer.appendChild(div);
+    });
+
+    // Handle Next button click
+    document.getElementById('nextButton').addEventListener('click', function() {
+        const uncheckedIngredients = [];
+        document.querySelectorAll('.ingredients-checklist .form-check-input').forEach(checkbox => {
+            if (!checkbox.checked) {
+                uncheckedIngredients.push(checkbox.dataset.ingredient);
+            }
+        });
+
+        if (uncheckedIngredients.length === 0) {
+            // All ingredients checked, proceed to cooking
+            window.location.href = `/recipe/cooking/${recipeId}`;
+            return;
+        }
+
+        // Show alternatives section
+        document.getElementById('ingredientsSection').style.display = 'none';
+        document.getElementById('alternativesSection').style.display = 'block';
+        document.getElementById('alternativesCard').style.display = 'block';
+        document.getElementById('proceedButton').style.display = 'block';
+
+        // Display missing ingredients
+        const missingIngredientsContainer = document.getElementById('missingIngredients');
+        missingIngredientsContainer.innerHTML = '';
+        uncheckedIngredients.forEach(ingredient => {
+            const div = document.createElement('div');
+            div.className = 'ingredient-tag required';
+            div.textContent = ingredient;
+            div.setAttribute('data-ingredient', ingredient);
+            div.addEventListener('click', async function() {
+                await showAlternatives(ingredient);
+            });
+            missingIngredientsContainer.appendChild(div);
+        });
+    });
+
+    // Function to show alternatives for an ingredient
+    async function showAlternatives(ingredient) {
+        try {
+            const response = await fetch('/get_alternatives', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ingredients: [ingredient]
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                const alternativesContainer = document.getElementById('alternativeIngredients');
+                alternativesContainer.innerHTML = `
+                    <h5 class="mb-3">Alternatives for ${ingredient}:</h5>
+                    <div class="alternatives-grid">
+                        ${data.alternatives[ingredient].map(alt => `
+                            <div class="alternative-tag" data-original="${ingredient}" data-alternative="${alt}">
+                                ${alt}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                // Add click handlers for alternatives
+                document.querySelectorAll('.alternative-tag').forEach(tag => {
+                    tag.addEventListener('click', function() {
+                        const original = this.dataset.original;
+                        const alternative = this.dataset.alternative;
+                        
+                        // Update the missing ingredient tag
+                        const missingTag = document.querySelector(`.ingredient-tag[data-ingredient="${original}"]`);
+                        if (missingTag) {
+                            missingTag.textContent = alternative;
+                            missingTag.classList.add('has-alternative');
+                            missingTag.classList.remove('required');
+                        }
+
+                        // Store the alternative
+                        selectedAlternatives.set(original, alternative);
+                        
+                        // Enable proceed button if all ingredients have alternatives
+                        const allHaveAlternatives = Array.from(document.querySelectorAll('.ingredient-tag')).every(
+                            tag => tag.classList.contains('has-alternative')
+                        );
+                        document.getElementById('proceedButton').disabled = !allHaveAlternatives;
+                    });
+                });
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('An error occurred while getting alternatives');
+        }
+    }
+
+    // Store selected alternatives
+    const selectedAlternatives = new Map();
+
+    // Handle proceed button click
+    document.getElementById('proceedButton').addEventListener('click', function() {
+        // Store selected alternatives
+        sessionStorage.setItem('selectedAlternatives', JSON.stringify(Array.from(selectedAlternatives.entries())));
+        // Proceed to cooking instructions
+        window.location.href = `/recipe/cooking/${recipeId}`;
+    });
+});
+</script>
+
+<style>
+.bg-orange {
+    background: linear-gradient(135deg, var(--primary-orange), var(--dark-orange));
+}
+
+.selected-ingredients-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem;
+    background: var(--light-green);
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.selected-ingredient-item {
+    background: white;
+    padding: 0.8rem 1.2rem;
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-green);
+}
+
+.selected-ingredient-item .form-check-input:checked {
+    background-color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+.ingredients-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem;
+    background: var(--warm-gray);
+    border-radius: 8px;
+}
+
+.ingredient-checkbox-item {
+    background: white;
+    padding: 0.8rem 1.2rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.ingredient-checkbox-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.form-check-input {
+    width: 1.2em;
+    height: 1.2em;
+    margin-right: 0.8rem;
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-orange);
+    border-color: var(--primary-orange);
+}
+
+.form-check-label {
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: var(--text-dark);
+}
+
+.ingredients-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.ingredient-tag {
+    background: var(--light-orange);
+    color: var(--text-dark);
+    padding: 0.8rem 1.2rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.ingredient-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(255, 87, 34, 0.2);
+}
+
+.ingredient-tag.required {
+    background: var(--light-orange);
+    border: 1px dashed var(--primary-orange);
+}
+
+.ingredient-tag.has-alternative {
+    background: var(--primary-orange);
+    color: white;
+}
+
+.alternatives-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.8rem;
+}
+
+.alternative-tag {
+    background: var(--light-green);
+    color: var(--text-dark);
+    padding: 0.6rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.alternative-tag:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.alternative-tag.selected {
+    background: var(--primary-green);
+    color: white;
+}
+
+#nextButton {
+    background-color: var(--primary-orange);
+    border-color: var(--primary-orange);
+    color: white;
+    padding: 0.8rem 2rem;
+    font-size: 1.1rem;
+}
+
+#nextButton:hover {
+    background-color: var(--dark-orange);
+    border-color: var(--dark-orange);
+    transform: translateY(-2px);
+}
+
+#proceedButton {
+    background-color: var(--primary-green);
+    border-color: var(--primary-green);
+}
+
+#proceedButton:hover {
+    background-color: var(--dark-green);
+    border-color: var(--dark-green);
+}
+</style>
+{% endblock %} 

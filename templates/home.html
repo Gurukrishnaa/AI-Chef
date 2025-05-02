@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="home-container text-center">
+    <div class="brand-section mb-5">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='images/logo-icon.svg') }}" alt="DishDream Logo" class="logo-icon">
+            <h1 class="brand-name">Dish<span class="text-success">Dream</span></h1>
+        </div>
+        <h2 class="tagline">Your AI Sous Chef</h2>
+        <p class="subtitle">Find the perfect recipe based on your ingredients or<br>cravings, with step-by-step guidance.</p>
+    </div>
+
+    <div class="features-container">
+        <div class="row justify-content-center">
+            <div class="col-md-5">
+                <div class="feature-card">
+                    <div class="icon-circle camera-icon">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <h3>Scan Ingredients</h3>
+                    <p>Use what you have in your<br>kitchen to create delicious meals</p>
+                    <a href="/scan_ingredients" class="btn btn-primary orange-btn">Get Started</a>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="feature-card">
+                    <div class="icon-circle search-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Suggest a Dish</h3>
+                    <p>Tell us what you're craving and<br>we'll suggest the perfect recipe</p>
+                    <a href="/suggest_dish" class="btn btn-success green-btn">Get Started</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.home-container {
+    padding: 3rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.brand-section {
+    margin-bottom: 4rem;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.logo-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.brand-name {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+    color: #ff5722;
+}
+
+.tagline {
+    font-size: 2.8rem;
+    color: #48392A;
+    margin-bottom: 1rem;
+    font-weight: bold;
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+.features-container {
+    margin-top: 2rem;
+}
+
+.feature-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    height: 100%;
+    transition: transform 0.2s;
+}
+
+.feature-card:hover {
+    transform: translateY(-5px);
+}
+
+.icon-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
+
+.camera-icon {
+    background-color: #E8F5E9;
+}
+
+.camera-icon i {
+    color: #4CAF50;
+    font-size: 2rem;
+}
+
+.search-icon {
+    background-color: #FFF3E0;
+}
+
+.search-icon i {
+    color: #FF5722;
+    font-size: 2rem;
+}
+
+.feature-card h3 {
+    color: #333;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.feature-card p {
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.orange-btn {
+    background-color: #FF5722;
+    border-color: #FF5722;
+    padding: 0.5rem 2rem;
+    font-weight: 500;
+}
+
+.orange-btn:hover {
+    background-color: #F4511E;
+    border-color: #F4511E;
+}
+
+.green-btn {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    padding: 0.5rem 2rem;
+    font-weight: 500;
+}
+
+.green-btn:hover {
+    background-color: #43A047;
+    border-color: #43A047;
+}
+</style>
+{% endblock %}

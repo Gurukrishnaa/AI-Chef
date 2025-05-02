@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="recipe-header">
+        <div class="recipe-image-container">
+            <img src="{{ url_for('static', filename='images/food.jpg') }}" alt="Recipe Image" class="recipe-hero-image" id="recipeImage">
+            <div class="recipe-placeholder" id="recipePlaceholder" style="display: none;">
+                <i class="fas fa-utensils"></i>
+                <span>Recipe Image Not Available</span>
+                <p class="placeholder-description">We're working on getting the perfect picture for this dish!</p>
+            </div>
+        </div>
+        <div class="recipe-header-overlay"></div>
+        <div class="recipe-header-content">
+            <h1 class="recipe-title" id="recipeName"></h1>
+            <p class="recipe-description" id="recipeDescription"></p>
+            <div class="recipe-meta-tags">
+                <span class="recipe-tag">
+                    <i class="fas fa-clock"></i>
+                    <span id="cookingTime"></span>
+                </span>
+                <span class="recipe-tag">
+                    <i class="fas fa-utensils"></i>
+                    <span id="difficulty"></span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="recipe-content">
+        <div class="ingredients-card">
+            <div class="card-icon">
+                <i class="fas fa-shopping-basket"></i>
+            </div>
+            <h2 class="ingredients-title">Ingredients</h2>
+            <ul class="ingredients-list" id="ingredientsList">
+                <!-- Ingredients will be populated here -->
+            </ul>
+        </div>
+
+        <div class="instructions-card">
+            <div class="card-icon">
+                <i class="fas fa-book-open"></i>
+            </div>
+            <h2 class="instructions-title">Cooking Instructions</h2>
+            <div class="instruction-list" id="instructionsList">
+                <!-- Instructions will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const recipeId = window.location.pathname.split('/').pop();
+    const recipeData = JSON.parse(sessionStorage.getItem(recipeId));
+    
+    if (!recipeData) {
+        console.error('Recipe data not found');
+        return;
+    }
+
+    // Set recipe image
+    // Set recipe image
+    const recipeImage = document.getElementById('recipeImage');
+    const recipePlaceholder = document.getElementById('recipePlaceholder');
+    
+    if (recipeData.image) {
+        recipeImage.onerror = function() {
+            // If image fails to load
+            recipeImage.style.display = 'none';
+            recipePlaceholder.style.display = 'flex';
+        };
+        
+        recipeImage.onload = function() {
+            // If image loads successfully
+            recipeImage.style.display = 'block';
+            recipePlaceholder.style.display = 'none';
+        };
+        
+        recipeImage.src = recipeData.image;
+    } else {
+        // If no image URL provided
+        recipeImage.style.display = 'none';
+        recipePlaceholder.style.display = 'flex';
+    }
+
+    // Set recipe details
+    document.getElementById('recipeName').textContent = recipeData.name;
+    document.getElementById('recipeDescription').textContent = recipeData.description;
+    document.getElementById('cookingTime').textContent = recipeData.cookingTime || '30 mins';
+    document.getElementById('difficulty').textContent = recipeData.difficulty || 'Easy';
+
+    // Populate ingredients
+    const ingredientsList = document.getElementById('ingredientsList');
+    recipeData.ingredients.forEach(ingredient => {
+        const li = document.createElement('li');
+        li.className = 'ingredient-item';
+        li.textContent = ingredient;
+        ingredientsList.appendChild(li);
+    });
+
+    // Populate instructions
+    // Add voice synthesis functionality
+    const synth = window.speechSynthesis;
+    let speaking = false;
+    
+    function speakInstruction(text) {
+        if (speaking) {
+            synth.cancel();
+        }
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Get available voices and select a female voice
+        const voices = synth.getVoices();
+        const femaleVoice = voices.find(voice => 
+            voice.name.toLowerCase().includes('female') || 
+            voice.name.toLowerCase().includes('zira') ||  // Windows female voice
+            voice.name.toLowerCase().includes('samantha') // MacOS female voice
+        );
+        
+        if (femaleVoice) {
+            utterance.voice = femaleVoice;
+        }
+        
+        // Adjust voice characteristics for more feminine sound
+        utterance.rate = 0.9;     // Slightly slower for clarity
+        utterance.pitch = 1.2;    // Higher pitch for feminine voice
+        utterance.volume = 1.0;   // Full volume
+        speaking = true;
+        
+        utterance.onend = () => {
+            speaking = false;
+        };
+        
+        synth.speak(utterance);
+    }
+    
+    // Wait for voices to be loaded
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = () => {
+            // Voices are now loaded and available
+        };
+    }
+
+    // Modify the instructions population code
+    const instructionsList = document.getElementById('instructionsList');
+    recipeData.instructions.forEach((instruction, index) => {
+        const div = document.createElement('div');
+        div.className = 'instruction-item';
+        div.innerHTML = `
+            <div class="instruction-number">${index + 1}</div>
+            <div class="instruction-content">
+                <div class="instruction-text">${instruction}</div>
+                ${instruction.toLowerCase().includes('minute') || instruction.toLowerCase().includes('min') ? `
+                    <div class="timer-container">
+                        <div class="timer-display">00:00</div>
+                        <div class="timer-controls">
+                            <button class="timer-btn start-timer" title="Start Timer">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button class="timer-btn pause-timer" style="display: none;" title="Pause Timer">
+                                <i class="fas fa-pause"></i>
+                            </button>
+                            <button class="timer-btn reset-timer" title="Reset Timer">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                        </div>
+                    </div>
+                ` : ''}
+                <button class="voice-btn" title="Listen to instruction">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+            </div>
+        `;
+
+        // Add voice button click handler
+        const voiceBtn = div.querySelector('.voice-btn');
+        voiceBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            speakInstruction(instruction);
+        });
+
+        // Add click handler to mark instruction as complete
+        div.addEventListener('click', function(e) {
+            // Don't toggle if clicking timer controls
+            if (!e.target.closest('.timer-container')) {
+                this.classList.toggle('completed');
+            }
+        });
+
+        // Initialize timer if present
+        const timerContainer = div.querySelector('.timer-container');
+        if (timerContainer) {
+            initializeTimer(timerContainer, instruction);
+        }
+
+        instructionsList.appendChild(div);
+    });
+});
+
+function initializeTimer(timerContainer, instruction) {
+    const timerDisplay = timerContainer.querySelector('.timer-display');
+    const startBtn = timerContainer.querySelector('.start-timer');
+    const pauseBtn = timerContainer.querySelector('.pause-timer');
+    const resetBtn = timerContainer.querySelector('.reset-timer');
+    
+    // Extract time from instruction (e.g., "5 minutes" -> 300 seconds)
+    const timeMatch = instruction.match(/(\d+)\s*(?:minute|min)/i);
+    const duration = timeMatch ? parseInt(timeMatch[1]) * 60 : 300; // Default to 5 minutes if no time found
+    let timeLeft = duration;
+    let timerId = null;
+
+    function updateDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function playTimerEndSound() {
+        const audio = new Audio('/static/sounds/timer-end.mp3');
+        audio.play().catch(e => console.log('Audio play failed:', e));
+    }
+
+    startBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!timerId) {
+            timerId = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay();
+                } else {
+                    clearInterval(timerId);
+                    timerId = null;
+                    startBtn.style.display = 'inline-block';
+                    pauseBtn.style.display = 'none';
+                    playTimerEndSound();
+                    // Visual feedback when timer ends
+                    timerDisplay.classList.add('timer-ended');
+                    setTimeout(() => timerDisplay.classList.remove('timer-ended'), 1000);
+                }
+            }, 1000);
+            startBtn.style.display = 'none';
+            pauseBtn.style.display = 'inline-block';
+        }
+    });
+
+    pauseBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        clearInterval(timerId);
+        timerId = null;
+        startBtn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
+    });
+
+    resetBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        clearInterval(timerId);
+        timerId = null;
+        timeLeft = duration;
+        updateDisplay();
+        startBtn.style.display = 'inline-block';
+        pauseBtn.style.display = 'none';
+        timerDisplay.classList.remove('timer-ended');
+    });
+
+    updateDisplay();
+}
+</script>
+
+<style>
+.recipe-header {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+    border-radius: 20px;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+}
+
+.recipe-image-container {
+    width: 100%;
+    height: 100%;
+}
+
+.recipe-hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.05);
+    transition: transform 0.3s ease;
+}
+
+.recipe-header:hover .recipe-hero-image {
+    transform: scale(1.1);
+}
+
+.recipe-header-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, 
+        rgba(0,0,0,0.1) 0%,
+        rgba(0,0,0,0.5) 50%,
+        rgba(0,0,0,0.8) 100%);
+}
+
+.recipe-header-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 3rem 2rem;
+    color: white;
+}
+
+.recipe-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.recipe-description {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    max-width: 600px;
+    margin-bottom: 1.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.recipe-meta-tags {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.recipe-tag {
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(5px);
+    padding: 0.6rem 1.2rem;
+    border-radius: 30px;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.recipe-tag:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-2px);
+}
+
+.recipe-content {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+    padding: 0 1rem;
+}
+
+.ingredients-card, .instructions-card {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    position: relative;
+    overflow: hidden;
+}
+
+.card-icon {
+    position: absolute;
+    top: -15px;
+    right: -15px;
+    width: 60px;
+    height: 60px;
+    background: var(--light-orange);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.2;
+}
+
+.card-icon i {
+    font-size: 1.8rem;
+    color: var(--primary-orange);
+}
+
+.ingredients-title, .instructions-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    color: var(--primary-orange);
+}
+
+.ingredient-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-bottom: 1px solid rgba(255, 87, 34, 0.1);
+    color: var(--text-dark);
+    font-size: 1.1rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.ingredient-item:last-child {
+    border-bottom: none;
+}
+
+.ingredient-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--primary-orange);
+}
+
+.instruction-item {
+    display: flex;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    background: var(--warm-gray);
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.instruction-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    border-color: var(--light-orange);
+}
+
+.instruction-number {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-orange);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    font-size: 1.2rem;
+}
+
+.instruction-text {
+    color: var(--text-dark);
+    line-height: 1.6;
+    font-size: 1.1rem;
+    padding-top: 0.25rem;
+}
+
+.instruction-item.completed {
+    background: var(--light-green);
+    border-color: var(--primary-green);
+}
+
+.instruction-item.completed .instruction-text {
+    text-decoration: line-through;
+    color: var(--text-light);
+}
+
+.instruction-item.completed .instruction-number {
+    background: var(--primary-green);
+}
+
+.timer-container {
+    background: white;
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid var(--light-orange);
+}
+
+.timer-display {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 1.3rem;
+    color: var(--primary-orange);
+    font-weight: 600;
+    min-width: 80px;
+    text-align: center;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.timer-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: var(--text-dark);
+    transition: all 0.2s ease;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+
+.voice-btn:hover {
+    background: var(--light-orange);
+    color: var(--primary-orange);
+    transform: scale(1.1);
+}
+
+.voice-btn.speaking {
+    animation: pulse 1s infinite;
+    background: var(--light-orange);
+    color: var(--primary-orange);
+}
+
+/* Add to existing animations */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+    .recipe-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .recipe-header {
+        height: 300px;
+    }
+    
+    .recipe-title {
+        font-size: 2rem;
+    }
+}
+
+.recipe-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--light-orange) 0%, var(--primary-orange) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    padding: 2rem;
+    text-align: center;
+}
+
+.recipe-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.recipe-placeholder span {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.placeholder-description {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+</style>
+{% endblock %}
