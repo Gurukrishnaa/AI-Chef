@@ -1,6 +1,6 @@
 Flask==2.0.1
 opencv-python==4.8.0.74
-google-generative-ai==0.3.0
+google-generative-ai==0.2.0
 Pillow==10.0.0
 Flask-SQLAlchemy==3.0.0
 python-dotenv==1.0.0
